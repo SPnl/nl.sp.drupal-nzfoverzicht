@@ -1,0 +1,10 @@
+; $Id$
+ 
+name = NZF Overzicht
+description = Overzicht aanmeldingen Nationaal ZorgFonds campagne
+package = sprbs
+core = 7.x
+
+dependencies[] = civicrm
+files[] = nzfoverzicht.module
+files[] = nzfoverzicht.inc
