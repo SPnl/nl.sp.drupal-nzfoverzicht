@@ -1,11 +1,14 @@
 <?php
 
 function nzfoverzicht_page() {
+  // group id of NFZ - aanmeldingen
   $NZF_groupID = 2658;
 
+  // initialize civicrm
   civicrm_initialize();
 
-  $html = '<p>Aantal aanmeldingen voor de Nationaal ZorgFond campagne</p>';
+  $html = '<main class="content">';
+  $html .= '<p>Aantal aanmeldingen voor de Nationaal ZorgFonds campagne</p>';
 
   // 1. count the total number of supporters
   $sql = "
@@ -28,9 +31,10 @@ function nzfoverzicht_page() {
   $totalNumber = CRM_Core_DAO::singleValueQuery($sql, $sqlParams);
 
   $html .= '<h2>Landelijk</h2>';
-  $html .= "<ul><li>$totalNumber</li></ul>";
+  $html .= "<ul><li>Totaal: $totalNumber</li></ul>";
 
   // 2. count the number of supporters per local branch
+  $sqlExtraWhere = nzfoverzicht_limitBranchList();
   $sql = "
     SELECT
       afd.`display_name` as afdeling
@@ -45,6 +49,7 @@ function nzfoverzicht_page() {
       civicrm_contact afd ON gs.`afdeling` = afd.`id`
     WHERE
       g.id = %1
+      AND $sqlExtraWhere
     GROUP BY
       afd.`display_name`
     ORDER BY
@@ -60,10 +65,61 @@ function nzfoverzicht_page() {
   $dao = CRM_Core_DAO::executeQuery($sql, $sqlParams);
   while($dao->fetch()) {
 
-    $html .= "<li>{$doa->afdeling}: {$dao->aantal}</li>";
+    $html .= "<li>{$dao->afdeling}: {$dao->aantal}</li>";
   }
 
   $html .= '</ul>';
+  $html .= '</main>';
 
   return $html;
+}
+
+function nzfoverzicht_limitBranchList() {
+  global $user;
+
+  // check if the user has full or limited permissions
+  $userHasFullPermissions = FALSE;
+  foreach ($user->roles as $role) {
+    if ($role == 'administrator' || $role == 'Applicatiebeheer CiviCRM' || $role == 'Personeel') {
+      $userHasFullPermissions = TRUE;
+      break;
+    }
+  }
+
+  if ($userHasFullPermissions) {
+    // this user can see all branches, add a dummy where clause
+    $sqlExtraWhere = ' 1 = 1 ';
+  }
+  else {
+    // get the contact id of the current user
+    $params = array(
+      'uf_id' => $user->uid,
+      'sequential' => 1,
+    );
+    $results = civicrm_api3('UFMatch', 'get', $params);
+
+    if ($results['count'] == 1) {
+      // get the branch of the current user
+      $sql = "select afdeling from civicrm_value_geostelsel where entity_id = %1";
+      $sqlParams = array(
+        1 => array($results['values'][0]['contact_id'], 'Integer'),
+      );
+      $branch = CRM_Core_DAO::singleValueQuery($sql, $sqlParams);
+
+      if (!empty($branch)) {
+        // limit the query to the branch of this user
+        $sqlExtraWhere = ' gs.afdeling = ' . $branch;
+      }
+      else {
+        // user has no branch, make sure the query will return no records
+        $sqlExtraWhere = ' 1 = 0 ';
+      }
+    }
+    else {
+      // user has no corresponding contact in CiviCRM, make sure the query will return no records
+      $sqlExtraWhere = ' 1 = 0 ';
+    }
+  }
+
+  return $sqlExtraWhere;
 }
