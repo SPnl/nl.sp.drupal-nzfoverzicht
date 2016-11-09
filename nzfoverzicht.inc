@@ -18,8 +18,11 @@ function nzfoverzicht_page() {
       civicrm_group g
     INNER JOIN
       civicrm_group_contact gc ON gc.`group_id` = g.id
+    INNER JOIN
+      civicrm_contact c ON gc.contact_id = c.id
     WHERE
       g.id = %1
+      and c.is_deleted = 0
       and gc.status = 'Added'
   ";
   $sqlParams = array(
@@ -46,6 +49,7 @@ function nzfoverzicht_page() {
       civicrm_contact afd ON gs.`afdeling` = afd.`id`
     WHERE
       g.id = %1
+      and c.is_deleted = 0
       and gc.status = 'Added'
       AND $sqlExtraWhere
     GROUP BY
