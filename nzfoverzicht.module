@@ -3,11 +3,11 @@
 function nzfoverzicht_menu() {
 	$items = array();
 
-	$items['nzfoverzicht'] = array(
-		'title' => t('NZF Overzicht'),
+	$items['nationaal-zorgfonds-overzicht'] = array(
+		'title' => t('Nationaal ZorgFonds Overzicht'),
 		'page callback' => 'nzfoverzicht_page',
 		'access callback' => 'user_is_logged_in',
-		'description' => t('NZF Overzicht'),
+		'description' => t('Nationaal ZorgFonds Overzicht'),
 		'type' => MENU_CALLBACK,
     'file' => 'nzfoverzicht.inc',
 	);
