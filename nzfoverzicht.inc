@@ -18,12 +18,9 @@ function nzfoverzicht_page() {
       civicrm_group g
     INNER JOIN
       civicrm_group_contact gc ON gc.`group_id` = g.id
-    INNER JOIN
-      civicrm_value_geostelsel gs ON gs.`entity_id` = gc.`contact_id`
-    INNER JOIN
-      civicrm_contact afd ON gs.`afdeling` = afd.`id`
     WHERE
       g.id = %1
+      and gc.status = 'Added'
   ";
   $sqlParams = array(
     1 => array($NZF_groupID, 'Integer'),
@@ -49,6 +46,7 @@ function nzfoverzicht_page() {
       civicrm_contact afd ON gs.`afdeling` = afd.`id`
     WHERE
       g.id = %1
+      and gc.status = 'Added'
       AND $sqlExtraWhere
     GROUP BY
       afd.`display_name`
