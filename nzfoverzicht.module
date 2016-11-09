@@ -12,6 +12,15 @@ function nzfoverzicht_menu() {
     'file' => 'nzfoverzicht.inc',
 	);
 
+  $items['nationaal-zorgfonds-detail'] = array(
+    'title' => t('Nationaal ZorgFonds Detail'),
+    'page callback' => 'nzfdetail_page',
+    'access callback' => 'user_is_logged_in',
+    'description' => t('Nationaal ZorgFonds Detail'),
+    'type' => MENU_CALLBACK,
+    'file' => 'nzfdetail.inc',
+  );
+
 	return $items;
 }
 
