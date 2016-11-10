@@ -194,7 +194,7 @@ function nzdetail_getData($filterLevel = '', $filterItem = '', $filterPreviousLe
         INNER JOIN
           civicrm_contact prov ON prov.id = gs.`provincie`
         WHERE
-          g.id = 1503
+          g.id = %1
           AND c.is_deleted = 0
           AND gc.status = 'Added'
         GROUP BY
