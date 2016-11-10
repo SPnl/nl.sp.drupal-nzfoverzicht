@@ -2,7 +2,7 @@
 
 function nzfoverzicht_page() {
   // group id of NFZ - aanmeldingen
-  $NZF_groupID = 1503; /* ORIG = 2658; */
+  $NZF_groupID = 2658;
 
   // initialize civicrm
   civicrm_initialize();
@@ -31,7 +31,7 @@ function nzfoverzicht_page() {
   $totalNumber = CRM_Core_DAO::singleValueQuery($sql, $sqlParams);
 
   $html .= '<h2>Landelijk</h2>';
-  $html .= "<ul><li>Totaal: <a href=\"nationaal-zorgfonds-detail\">$totalNumber</a></li></ul>";
+  $html .= "<ul><li><a href=\"nationaal-zorgfonds-detail\">Totaal</a>: $totalNumber</li></ul>";
 
   // 2. count the number of supporters per local branch
   $sqlExtraWhere = nzfoverzicht_limitBranchList();

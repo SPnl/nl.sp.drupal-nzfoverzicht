@@ -1,0 +1,20 @@
+table.nzfdetail th, table.nzfdetail td {
+    border: 1px solid black;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+td.nzfitem {
+    text-align: left !important;
+    padding-left: 5px !important;
+}
+
+td.nzfvalue {
+    text-align: right !important;
+}
+
+table.nzfdetail th {
+    background-color: #f60000;
+    color: #ffffff;
+    text-align: left !important;
+}

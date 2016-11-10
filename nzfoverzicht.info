@@ -6,5 +6,8 @@ package = sprbs
 core = 7.x
 
 dependencies[] = civicrm
+
+stylesheets[all][] = nzfoverzicht.css
+
 files[] = nzfoverzicht.module
 files[] = nzfoverzicht.inc
