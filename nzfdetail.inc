@@ -10,46 +10,29 @@ function nzfdetail_page() {
   $queryString = drupal_get_query_parameters();
 
   // check if we have filters in the query string
-  $filterLevel = '';
-  if (array_key_exists('filterLevel', $queryString)) {
-    $filterLevel = urldecode($queryString['filterLevel']);
+  $filterProvincie = '';
+  if (array_key_exists('filterProvincie', $queryString)) {
+    $filterProvincie = urldecode($queryString['filterProvincie']);
   }
 
-  $filterPreviousLevel = '';
-  if (array_key_exists('filterPreviousLevel', $queryString)) {
-    $filterPreviousLevel = urldecode($queryString['filterPreviousLevel']);
+  $filterGemeente = '';
+  if (array_key_exists('filterGemeente', $queryString)) {
+    $filterGemeente = urldecode($queryString['filterGemeente']);
   }
-  else {
-    $filterPreviousLevel = $filterLevel;
-  }
-
-  $filterPreviousItem = '';
-  if (array_key_exists('filterItem', $queryString)) {
-    $filterItem = urldecode($queryString['filterItem']);
-  }
-
-  $filterPreviousItem = '';
-  if (array_key_exists('filterPreviousItem', $queryString)) {
-    $filterPreviousItem = urldecode($queryString['filterPreviousItem']);
-  }
-  else {
-    $filterPreviousItem = $filterItem;
+  
+  $filterWoonplaats = '';
+  if (array_key_exists('filterWoonplaats', $queryString)) {
+    $filterWoonplaats = urldecode($queryString['filterWoonplaats']);
   }
 
   // get the data
-  $data = nzdetail_getData($filterLevel, $filterItem, $filterPreviousLevel, $filterPreviousItem);
+  $data = nzdetail_getData($filterProvincie, $filterGemeente, $filterWoonplaats);
 
-  // show back link
-  $html .= '<p>' . $data['previousURL'] . '</p>';
+  // set the drill up link and the page title
+  $html .= '<p>' . $data['drillUpURL'] . '</a></p>';
+  $html .= '<h2>' . $data['pageTitle'] . '</h2>';
 
-  // show title if data is filtered
-  if ($filterLevel && $filterItem) {
-    $html .= "<h2>$filterLevel: $filterItem</h2>";
-  }
-  else {
-    $html .= '<h2>Alle provincies</h2>';
-  }
-
+  // show the data in a table
   $html .= '<table class="nzfdetail">';
   $html .= '<tr>';
   $html .= "<th>{$data['columnHeader']}</th>";
@@ -59,14 +42,8 @@ function nzfdetail_page() {
   while ($data['dao']->fetch()) {
     $html .= '<tr>';
 
-    // check if we need to add a drill down url
-    if ($data['nextLevel']) {
-      $url = 'nationaal-zorgfonds-detail?filterLevel=' . $data['nextLevel'] . '&filterItem=' . urlencode($data['dao']->item);
-
-      if ($filterPreviousLevel) {
-        $url .= '&filterPreviousLevel=' . urlencode($filterPreviousLevel) . '&filterPreviousItem=' . urlencode($filterPreviousItem);
-      }
-      $html .= "<td class=\"nzfitem\"><a href=\"$url\">{$data['dao']->item}</a></td>";
+    if ($data['drillDownURL']) {
+      $html .= '<td class="nzfitem"><a href="' . $data['drillDownURL'] . urlencode($data['dao']->item) . '">' . $data['dao']->item . '</a></td>';
     }
     else {
       // no drill down on item
@@ -84,17 +61,16 @@ function nzfdetail_page() {
   return $html;
 }
 
-/**
- * returns array with column header and $dao
- */
-function nzdetail_getData($filterLevel = '', $filterItem = '', $filterPreviousLevel = '', $filterPreviousItem = '') {
+function nzdetail_getData($filterProvincie, $filterGemeente, $filterWoonplaats) {
   // group id of NFZ - aanmeldingen
   $NZF_groupID = 2658;
 
   // prepare return value array
   $retval = array(
+    'pageTitle' => '',
+    'drillUpURL' => '',
+    'drillUpDownURL' => '',
     'columnHeader' => '',
-    'nextLevel' => '',
     'dao' => '',
   );
 
@@ -102,109 +78,137 @@ function nzdetail_getData($filterLevel = '', $filterItem = '', $filterPreviousLe
     1 => array($NZF_groupID, 'Integer'),
   );
 
-  switch ($filterLevel) {
-    case 'Provincie':
-      // show all cities in the specified province
-      $retval['columnHeader'] = 'Gemeente';
-      $retval['previousURL'] = '<a href="nationaal-zorgfonds-detail">&lt terug naar alle provincies</a>';
-      $retval['nextLevel'] = 'Gemeente';
+  if ($filterProvincie == '') {
+    $retval['drillUpURL'] = '<a href="nationaal-zorgfonds-overzicht">&lt terug naar overzicht</a>';
+    $retval['pageTitle'] = 'Alle provincies';
+    $retval['columnHeader'] = 'Provincie';
+    $retval['drillDownURL'] = 'nationaal-zorgfonds-detail?filterProvincie=';
 
-      $sql = "
+    $sql = "
         SELECT
-           ag.`gemeente_24`  item
+          ag.`provincie_28` item
           , COUNT(gc.id) aantal
-        FROM
-          civicrm_group g
-        INNER JOIN
-          civicrm_group_contact gc ON gc.`group_id` = g.id
-        INNER JOIN
-          civicrm_contact c ON gc.contact_id = c.id
-        INNER JOIN
-          civicrm_value_geostelsel gs ON gs.`entity_id` = c.`id`
-        INNER JOIN
-          civicrm_contact prov ON prov.id = gs.`provincie`          
-        INNER JOIN
-          civicrm_address a ON a.`contact_id` = c.id AND a.is_primary = 1
-        INNER JOIN
-          `civicrm_value_adresgegevens_12` ag ON ag.`entity_id` = a.`id`
+        FROM         
+      	  civicrm_value_adresgegevens_12 ag
+        LEFT OUTER JOIN
+          civicrm_address a ON a.id = ag.`entity_id`
+        LEFT OUTER JOIN
+          civicrm_contact c ON c.id = a.`contact_id`
+        LEFT OUTER JOIN
+          civicrm_group_contact gc ON gc.`contact_id` = c.id	   
         WHERE
-          g.id = %1
+          gc.group_id = %1
           AND c.is_deleted = 0
           AND gc.status = 'Added'
-          AND prov.`display_name` = %2
+          AND a.`is_primary` = 1
+        GROUP BY
+          ag.`provincie_28`
+        ORDER BY 1
+      ";
+  }
+  else if ($filterGemeente == '') {
+    $retval['drillUpURL'] = '<a href="nationaal-zorgfonds-detail">&lt terug naar alle provincies</a>';
+    $retval['pageTitle'] = "Provincie $filterProvincie";
+    $retval['columnHeader'] = 'Gemeente';
+    $retval['drillDownURL'] = 'nationaal-zorgfonds-detail?filterProvincie=' . urlencode($filterProvincie) . '&filterGemeente=';
+
+    $sql = "
+        SELECT
+          ag.`gemeente_24` item
+          , COUNT(gc.id) aantal
+        FROM         
+      	  civicrm_value_adresgegevens_12 ag
+        LEFT OUTER JOIN
+          civicrm_address a ON a.id = ag.`entity_id`
+        LEFT OUTER JOIN
+          civicrm_contact c ON c.id = a.`contact_id`
+        LEFT OUTER JOIN
+          civicrm_group_contact gc ON gc.`contact_id` = c.id	   
+        WHERE
+          gc.group_id = %1
+          AND c.is_deleted = 0
+          AND gc.status = 'Added'
+          AND a.`is_primary` = 1
+          AND ag.`provincie_28` = %2
         GROUP BY
           ag.`gemeente_24`
         ORDER BY 1
       ";
 
-      $sqlParams[2] = array('SP-provincie ' . $filterItem, 'String');
-      break;
-    case 'Gemeente':
-      // show all neighborhoors in the specified city
-      $retval['columnHeader'] = 'Buurt';
-      $retval['previousURL'] = '<a href="nationaal-zorgfonds-detail?filterLevel=' . urlencode($filterPreviousLevel) . '&filterItem=' . urlencode($filterPreviousItem) . '"">&lt terug naar ' . $filterPreviousLevel . ' ' . $filterPreviousItem . '</a>';
-      $retval['nextLevel'] = '';
+    $sqlParams[2] = array($filterProvincie, 'String');
+  }
+  else if ($filterWoonplaats == '') {
+    $retval['drillUpURL'] = '<a href="nationaal-zorgfonds-detail?filterProvincie=' . urlencode($filterProvincie) . '">&lt terug naar provincie ' . $filterProvincie . '</a>';
+    $retval['pageTitle'] = "Gemeente $filterGemeente ($filterProvincie)";
+    $retval['columnHeader'] = 'Woonplaats';
+    $retval['drillDownURL'] = 'nationaal-zorgfonds-detail?filterProvincie=' . urlencode($filterProvincie) . '&filterGemeente=' . urlencode($filterGemeente) . '&filterWoonplaats=';
 
-      $sql = "
+    $sql = "
         SELECT
-           ag.`buurt_25`  item
+          a.city item
           , COUNT(gc.id) aantal
-        FROM
-          civicrm_group g
-        INNER JOIN
-          civicrm_group_contact gc ON gc.`group_id` = g.id
-        INNER JOIN
-          civicrm_contact c ON gc.contact_id = c.id
-        INNER JOIN
-          civicrm_value_geostelsel gs ON gs.`entity_id` = c.`id`
-        INNER JOIN
-          civicrm_address a ON a.`contact_id` = c.id AND a.is_primary = 1
-        INNER JOIN
-          `civicrm_value_adresgegevens_12` ag ON ag.`entity_id` = a.`id`
+        FROM         
+      	  civicrm_value_adresgegevens_12 ag
+        LEFT OUTER JOIN
+          civicrm_address a ON a.id = ag.`entity_id`
+        LEFT OUTER JOIN
+          civicrm_contact c ON c.id = a.`contact_id`
+        LEFT OUTER JOIN
+          civicrm_group_contact gc ON gc.`contact_id` = c.id	   
         WHERE
-          g.id = %1
+          gc.group_id = %1
           AND c.is_deleted = 0
           AND gc.status = 'Added'
-          AND ag.`gemeente_24` = %2
+          AND a.`is_primary` = 1
+          AND ag.`provincie_28` = %2
+          AND ag.`gemeente_24` = %3 
         GROUP BY
-          ag.`buurt_25`
+          a.city
         ORDER BY 1
       ";
 
-      $sqlParams[2] = array($filterItem, 'String');
-      break;
-    default:
-      // show all provinces
-      $retval['columnHeader'] = 'Provincie';
-      $retval['previousURL'] = '<a href="nationaal-zorgfonds-overzicht">&lt terug naar overzicht</a>';
-      $retval['nextLevel'] = 'Provincie';
+    $sqlParams[2] = array($filterProvincie, 'String');
+    $sqlParams[3] = array($filterGemeente, 'String');
+  }
+  else {
+    $retval['drillUpURL'] = '<a href="nationaal-zorgfonds-detail?filterProvincie=' . urlencode($filterProvincie) .
+      '&filterGemeente=' . urlencode($filterGemeente) . '">&lt terug naar gemeente ' . $filterGemeente . '</a>';
+    $retval['pageTitle'] = "Woonplaats $filterWoonplaats (gemeente $filterGemeente)";
+    $retval['columnHeader'] = 'Buurt';
+    $retval['drillDownURL'] = '';
 
-      $sql = "
+    $sql = "
         SELECT
-          REPLACE(prov.`display_name`, 'SP-provincie ', '') item
+          ag.buurt_25 item
           , COUNT(gc.id) aantal
-        FROM
-          civicrm_group g
-        INNER JOIN
-          civicrm_group_contact gc ON gc.`group_id` = g.id
-        INNER JOIN
-          civicrm_contact c ON gc.contact_id = c.id
-        INNER JOIN
-          civicrm_value_geostelsel gs ON gs.`entity_id` = c.`id`
-        INNER JOIN
-          civicrm_contact prov ON prov.id = gs.`provincie`
+        FROM         
+      	  civicrm_value_adresgegevens_12 ag
+        LEFT OUTER JOIN
+          civicrm_address a ON a.id = ag.`entity_id`
+        LEFT OUTER JOIN
+          civicrm_contact c ON c.id = a.`contact_id`
+        LEFT OUTER JOIN
+          civicrm_group_contact gc ON gc.`contact_id` = c.id	   
         WHERE
-          g.id = %1
+          gc.group_id = %1
           AND c.is_deleted = 0
           AND gc.status = 'Added'
+          AND a.`is_primary` = 1
+          AND ag.`provincie_28` = %2
+          AND ag.`gemeente_24` = %3
+          AND a.city = %4
         GROUP BY
-          prov.`display_name`
+          ag.buurt_25
         ORDER BY 1
       ";
+
+    $sqlParams[2] = array($filterProvincie, 'String');
+    $sqlParams[3] = array($filterGemeente, 'String');
+    $sqlParams[4] = array($filterWoonplaats, 'String');
   }
 
   $retval['dao'] = CRM_Core_DAO::executeQuery($sql, $sqlParams);
 
-
   return $retval;
 }
+
