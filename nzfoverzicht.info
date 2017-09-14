@@ -4,6 +4,7 @@ name = NZF Overzicht
 description = Overzicht aanmeldingen Nationaal ZorgFonds campagne
 package = sprbs
 core = 7.x
+version = 1.0.1
 
 dependencies[] = civicrm
 
